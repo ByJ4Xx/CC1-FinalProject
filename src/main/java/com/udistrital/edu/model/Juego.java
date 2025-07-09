@@ -27,14 +27,15 @@ public class Juego {
     private final PilaDeshacer pilaDeshacer;
     private final SistemaJusticia sistemaJusticia;
     private final EventoDinamico eventoDinamico;
+    private Jugador jugador;
 
     // Recursos del jugador
-    private int dineroSucio;
+    /*private int dineroSucio;
     private int dineroLimpio;
     private int influencia;
     private int capitalPolitico;
     private int nivelSospecha;
-    private int reputacionPublica;
+    private int reputacionPublica;*/
     private int turnoActual;
 
     // Constantes del juego
@@ -53,13 +54,22 @@ public class Juego {
         this.eventoDinamico = new EventoDinamico(this);
 
         // Inicializar recursos del jugador
-        this.dineroSucio = 50000;
+        jugador = new Jugador.Builder().dineroSucio(50000)
+                .dineroLimpio(10000)
+                .influencia(100)
+                .capitalPolitico(0)
+                .nivelSospecha(10)
+                .reputacionPublica(70).build();
+
+        this.turnoActual = 1;
+
+        /*this.dineroSucio = 50000;
         this.dineroLimpio = 10000;
         this.influencia = 100;
         this.capitalPolitico = 0;
         this.nivelSospecha = 10;
         this.reputacionPublica = 70;
-        this.turnoActual = 1;
+        */
         
         // Crear político raíz si el árbol está vacío
         if (arbolCorrupcion.getRaiz() == null) {
@@ -131,13 +141,13 @@ public class Juego {
         int gananciaInfluencia = arbolCorrupcion.calcularInfluenciaTotal();
 
         // Aplicar modificadores por sospecha
-        double modificadorSospecha = 1.0 - (nivelSospecha / 200.0);
+        double modificadorSospecha = 1.0 - (jugador.getNivelSospecha() / 200.0);
         gananciaDinero = (int) (gananciaDinero * modificadorSospecha);
         gananciaInfluencia = (int) (gananciaInfluencia * modificadorSospecha);
 
         // Actualizar recursos
-        dineroSucio += gananciaDinero;
-        influencia += gananciaInfluencia;
+        jugador.setDineroSucio(jugador.getDineroSucio()+gananciaDinero);
+        jugador.setInfluencia(jugador.getInfluencia()+gananciaInfluencia);
 
         System.out.printf("Recursos actualizados: +$%,d (sucio), +%d influencia%n",
                 gananciaDinero, gananciaInfluencia);
@@ -147,9 +157,9 @@ public class Juego {
      * Actualiza el capital político del jugador
      */
     private void actualizarCapitalPolitico() {
-        int nuevoCapital = (dineroSucio / 1000) + (influencia * 10)
-                + ((REPUTACION_MAXIMA - nivelSospecha) * 5);
-        this.capitalPolitico = nuevoCapital;
+        int nuevoCapital = (jugador.getDineroSucio() / 1000) + (jugador.getInfluencia() * 10)
+                + ((REPUTACION_MAXIMA - jugador.getNivelSospecha()) * 5);
+        jugador.setCapitalPolitico(nuevoCapital);
     }
 
     // =========================================================================
@@ -172,7 +182,7 @@ public class Juego {
         int costoInfluencia = INFLUENCIA_BASE_SOBORNO * nivel.getPoder();
 
         // Verificar recursos
-        if (dineroSucio < costo || influencia < costoInfluencia) {
+        if (jugador.getDineroSucio() < costo || jugador.getInfluencia() < costoInfluencia) {
             System.out.println("Recursos insuficientes para el soborno");
             return null;
         }
@@ -189,8 +199,8 @@ public class Juego {
 
         if (exito) {
             // Éxito: agregar al árbol
-            dineroSucio -= costo;
-            influencia -= costoInfluencia;
+            jugador.setDineroSucio(jugador.getDineroSucio()-costo);
+            jugador.setInfluencia(jugador.getInfluencia()-costoInfluencia);
             arbolCorrupcion.insertarPolitico(padre, nuevo);
 
             // Registrar conexión en el grafo
@@ -204,7 +214,7 @@ public class Juego {
         } else {
             // Fracaso: aumentar sospecha
             int aumentoSospecha = (int) (nivel.getPoder() * 3 * (1 - probabilidad));
-            nivelSospecha = Math.min(SOSPECHA_MAXIMA, nivelSospecha + aumentoSospecha);
+            jugador.setNivelSospecha(Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + aumentoSospecha));
 
             System.out.printf("¡Soborno fallido! %s rechazó la oferta. +%d sospecha%n",
                     nuevo.getNombre(), aumentoSospecha);
@@ -217,7 +227,7 @@ public class Juego {
      */
     private int calcularCostoSoborno(NivelJerarquico nivel) {
         // Costo base modificado por nivel, reputación y sospecha
-        double modificador = nivel.getPoder() * (1.0 + (nivelSospecha / 100.0) - (reputacionPublica / 200.0));
+        double modificador = nivel.getPoder() * (1.0 + (jugador.getNivelSospecha() / 100.0) - (jugador.getReputacionPublica() / 200.0));
         return (int) (COSTO_BASE_SOBORNO * modificador);
     }
 
@@ -229,8 +239,8 @@ public class Juego {
 
         // Modificadores
         double modLealtad = padre.getNivelLealtad() / 100.0;
-        double modInfluencia = influencia / 200.0;
-        double modSospecha = 1.0 - (nivelSospecha / 150.0);
+        double modInfluencia = jugador.getInfluencia() / 200.0;
+        double modSospecha = 1.0 - (jugador.getNivelSospecha() / 150.0);
 
         // Aplicar modificadores
         probabilidadBase *= modLealtad * modInfluencia * modSospecha;
@@ -330,7 +340,7 @@ public class Juego {
             registro.registrarCambioEstado(traidor.getId(), EstadoPolitico.ACTIVO, EstadoPolitico.TESTIGO_PROTEGIDO);
 
             // Aumentar sospecha significativamente
-            nivelSospecha = Math.min(SOSPECHA_MAXIMA, nivelSospecha + 20);
+            jugador.setNivelSospecha(Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + 20));
 
             System.out.printf("¡TRAICIÓN! %s se ha convertido en testigo protegido. +20 sospechan", traidor.getNombre());
         } else {
@@ -374,13 +384,13 @@ public class Juego {
                             p.modificarRiesgoExposicion(10);
                         }
                     }
-                    nivelSospecha = Math.min(SOSPECHA_MAXIMA, nivelSospecha + 15);
+                    jugador.setNivelSospecha(Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + 15));
                     break;
 
                 case FILTRACION_PRENSA:
                     // Pérdida de reputación
-                    reputacionPublica = Math.max(0, reputacionPublica - 10);
-                    capitalPolitico = Math.max(0, capitalPolitico - 100);
+                    jugador.setReputacionPublica(Math.max(0, jugador.getReputacionPublica() - 10));
+                    jugador.setCapitalPolitico(Math.max(0, jugador.getCapitalPolitico() - 100));
                     break;
 
                 case TRAICION_DOLOROSA:
@@ -393,13 +403,13 @@ public class Juego {
 
                 case ELECCIONES_REGIONALES:
                     // Oportunidad de ganar influencia
-                    influencia += 50;
+                    jugador.setInfluencia(jugador.getInfluencia()+50);
                     break;
 
                 case CAMBIO_FISCAL_GENERAL:
                     // Cambio aleatorio en sospecha
                     int cambio = new Random().nextBoolean() ? 10 : -10;
-                    nivelSospecha = Math.max(0, Math.min(SOSPECHA_MAXIMA, nivelSospecha + cambio));
+                    jugador.setNivelSospecha(Math.max(0, Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + cambio)));
                     break;
 
                 case PRESION_INTERNACIONAL:
@@ -419,7 +429,7 @@ public class Juego {
         Random rand = new Random();
 
         // Evento de mega operación (probabilidad aumenta con sospecha)
-        if (rand.nextDouble() < nivelSospecha / 200.0) {
+        if (rand.nextDouble() < jugador.getNivelSospecha() / 200.0) {
             EventoJuego evento = new EventoJuego(
                     "evt-mega-" + turnoActual,
                     TipoEvento.MEGA_OPERACION_ANTICORRUPCION,
@@ -494,7 +504,7 @@ public class Juego {
             }
 
             // Aumentar sospecha general
-            nivelSospecha = Math.min(SOSPECHA_MAXIMA, nivelSospecha + 2);
+            jugador.setNivelSospecha(Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + 2));
         }
     }
 
@@ -502,7 +512,7 @@ public class Juego {
      * Neutraliza una amenaza (fiscal, periodista, etc.)
      */
     public boolean neutralizarAmenaza(String idAmenaza, int costoDinero, int costoInfluencia) {
-        if (dineroSucio < costoDinero || influencia < costoInfluencia) {
+        if (jugador.getDineroSucio() < costoDinero || jugador.getInfluencia() < costoInfluencia) {
             return false;
         }
 
@@ -514,19 +524,19 @@ public class Juego {
 
         if (amenaza != null) {
             // Intentar neutralizar
-            double probabilidadExito = 0.7 - (nivelSospecha / 200.0);
+            double probabilidadExito = 0.7 - (jugador.getNivelSospecha()/ 200.0);
 
             if (Math.random() < probabilidadExito) {
                 // Éxito: eliminar conexión negativa
                 grafoConexiones.removerConexion(amenaza.getOrigen(), amenaza.getDestino());
-                dineroSucio -= costoDinero;
-                influencia -= costoInfluencia;
+                jugador.setDineroSucio(jugador.getDineroSucio()-costoDinero);
+                jugador.setInfluencia(jugador.getInfluencia()-costoInfluencia);
 
                 System.out.printf("¡Amenaza neutralizada! %s ya no es un riesgo%n", idAmenaza);
                 return true;
             } else {
                 // Fracaso: aumentar sospecha
-                nivelSospecha = Math.min(SOSPECHA_MAXIMA, nivelSospecha + 10);
+                jugador.setNivelSospecha(Math.min(SOSPECHA_MAXIMA, jugador.getNivelSospecha() + 10));
                 System.out.printf("Fallo al neutralizar %s. +10 sospecha%n", idAmenaza);
                 return false;
             }
@@ -540,7 +550,7 @@ public class Juego {
      */
     public boolean operacionEncubrimiento(String idPolitico, int costoDinero) {
         Politico politico = arbolCorrupcion.buscarPolitico(idPolitico);
-        if (politico == null || dineroSucio < costoDinero) {
+        if (politico == null || jugador.getDineroSucio() < costoDinero) {
             return false;
         }
 
@@ -549,10 +559,10 @@ public class Juego {
         politico.modificarRiesgoExposicion(-reduccionRiesgo);
 
         // Reducir sospecha global
-        int reduccionSospecha = 5 + (int) (nivelSospecha * 0.1);
-        nivelSospecha = Math.max(0, nivelSospecha - reduccionSospecha);
+        int reduccionSospecha = 5 + (int) (jugador.getNivelSospecha()* 0.1);
+        jugador.setNivelSospecha(Math.max(0, jugador.getNivelSospecha() - reduccionSospecha));
 
-        dineroSucio -= costoDinero;
+        jugador.setDineroSucio(jugador.getDineroSucio()-costoDinero);
 
         System.out.printf("Encubrimiento exitoso en %s. -%d riesgo, -%d sospecha%n",
                 politico.getNombre(), reduccionRiesgo, reduccionSospecha);
@@ -573,27 +583,28 @@ public class Juego {
     // GETTERS PARA EL ESTADO DEL JUEGO
     // =========================================================================
     public int getDineroSucio() {
-        return dineroSucio;
+        return jugador.getDineroSucio();
     }
 
-    public int getDineroLimpio() {
-        return dineroLimpio;
+    public int getDineroLimpio()
+    {
+        return jugador.getDineroLimpio();
     }
 
     public int getInfluencia() {
-        return influencia;
+        return jugador.getInfluencia();
     }
 
     public int getCapitalPolitico() {
-        return capitalPolitico;
+        return jugador.getCapitalPolitico();
     }
 
     public int getNivelSospecha() {
-        return nivelSospecha;
+        return jugador.getNivelSospecha();
     }
 
     public int getReputacionPublica() {
-        return reputacionPublica;
+        return jugador.getInfluencia();
     }
 
     public int getTurnoActual() {
