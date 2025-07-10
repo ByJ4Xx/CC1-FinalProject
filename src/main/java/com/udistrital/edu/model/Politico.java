@@ -123,6 +123,10 @@ public class Politico {
             this.habilidadesEspeciales.add(habilidad);
             return this;
         }
+
+        public boolean tieneHabilidad(HabilidadEspecial habilidad) {
+            return habilidadesEspeciales.contains(habilidad);
+        }
         
         public Builder aceptaSobornos(boolean acepta) {
             this.aceptaSobornos = acepta;
@@ -209,6 +213,20 @@ public class Politico {
     
     public void modificarRiesgoExposicion(int cambio) {
         this.riesgoExposicion = Math.max(0, Math.min(100, this.riesgoExposicion + cambio));
+    }
+
+    public boolean usarHabilidad(HabilidadEspecial habilidad, String idObjetivo) {
+        if (!tieneHabilidad(habilidad)) return false;
+
+        switch (habilidad) {
+            case CONTRATO_SICARIOS:
+
+                break;
+            // ...
+        }
+
+        habilidadesEspeciales.remove(habilidad);
+        return true;
     }
     
     

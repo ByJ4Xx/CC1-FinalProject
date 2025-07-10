@@ -10,9 +10,8 @@ import static com.udistrital.edu.model.Constantes.EstadoPolitico.BAJO_SOSPECHA;
 import static com.udistrital.edu.model.Constantes.EstadoPolitico.INVESTIGADO;
 import com.udistrital.edu.model.Constantes.NivelJerarquico;
 import com.udistrital.edu.model.Constantes.TipoEvento;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
+
+import java.util.*;
 
 /**
  *
@@ -582,12 +581,97 @@ public class Juego {
 
         if (Math.random() > transaccion.calcularRiesgoTransaccion(transaccion.monto,jugador.getNivelSospecha())) {
                 jugador.setDineroLimpio((int) (jugador.getDineroLimpio() + (transaccion.monto*0.85))); // 15% "comisión"
-                return true;
+                System.out.printf("La transacción %s fue realizada con éxito. +%f Fondos limpios disponibles",id,transaccion.monto*0.85);
+            return true;
             } else {
                 jugador.setNivelSospecha(jugador.getNivelSospecha()+10); // Falla en lavado
+                System.out.println("La transacción ha fracasado, aumentando riesgos. +10 en nivel de sospecha");
             }
             return false;
     }
+
+    public void habilidadContratarSicarios(String idAmenaza) {
+        // Buscar en el grafo de conexiones
+        Conexion amenaza = grafoConexiones.obtenerConexiones(idAmenaza).stream()
+                .filter(c -> c.esNegativa())
+                .findFirst()
+                .orElse(null);
+
+        if (amenaza != null) {
+            // Intentar neutralizar
+            grafoConexiones.removerConexion(amenaza.getOrigen(), amenaza.getDestino());
+            System.out.printf("¡Amenaza neutralizada! %s ya no es un riesgo%n", idAmenaza);
+        }
+    }
+
+    public boolean usarHabilidad(Politico politico, Constantes.HabilidadEspecial habilidad, String idObjetivo) {
+        if (politico.getHabilidadesEspeciales().contains(habilidad)) {
+            // Ejecutar efecto de la habilidad
+            ejecutarHabilidad(habilidad, idObjetivo);
+
+            // Eliminar del arsenal (solo un uso)
+            politico.getHabilidadesEspeciales().remove(habilidad);
+            return true;
+        }
+        return false;
+    }
+
+    public void ejecutarHabilidad (Constantes.HabilidadEspecial habilidad, String idObjetivo){
+        switch (habilidad) {
+            case BLOQUEAR_INVESTIGACION:
+                // Reduce significativamente el nivel de sospecha
+                jugador.setNivelSospecha(jugador.getNivelSospecha()-40);
+                System.out.println("¡Investigación bloqueada! -40 puntos de sospecha");
+                break;
+
+            case COMPRA_VOTOS:
+                // Aumenta la influencia inmediatamente
+                jugador.setInfluencia(jugador.getInfluencia()+150);
+                // Reduce ligeramente la reputación por fraude electoral
+                jugador.setReputacionPublica(jugador.getReputacionPublica()-10);
+                System.out.println("¡Votos comprados! +150 influencia, -10 reputación");
+                break;
+
+            case CONTRATACION_AMANADA:
+                // Aumenta el dinero sucio a través de contratos fraudulentos
+                double contratoFraudulento = 1000 + (Math.random() * 5000);
+                jugador.setDineroSucio(jugador.getDineroSucio()+(int)contratoFraudulento);
+                System.out.printf("¡Contratación amañada! +$%.2f dinero sucio%n", contratoFraudulento);
+                break;
+
+            case MANIPULACION_MEDIATICA:
+                // Mejora la reputación pública
+                jugador.setReputacionPublica(jugador.getReputacionPublica()+25);
+                // Reduce temporalmente el riesgo de exposición
+                jugador.setNivelSospecha(jugador.getNivelSospecha()-15);
+                System.out.println("¡Medios manipulados! +25 reputación, -15 nivel de sospecha");
+                break;
+
+            case CONTRATO_SICARIOS:
+                // Elimina un nodo enemigo aleatorio (ej: fiscal o periodista)
+                habilidadContratarSicarios(idObjetivo);
+
+            case LAVADO_DINERO:
+                // Lavado instantáneo de todo el dinero sucio sin comisión
+                double monto = jugador.getDineroSucio();
+                jugador.setDineroSucio(0);
+                jugador.setDineroLimpio(jugador.getDineroLimpio()+(int)monto);
+                System.out.printf("¡Lavado instantáneo! Convertidos $%.2f a dinero limpio%n", monto);
+                break;
+
+            case FALSIFICACION_PRUEBAS:
+                // Reduce la evidencia acumulada contra el jugador
+                sistemaJusticia.limpiarEvidencia();
+                jugador.setNivelSospecha(jugador.getNivelSospecha()-15);
+                System.out.println("¡Pruebas falsificadas! -15 sospecha");
+                break;
+
+            default:
+                System.out.println("Habilidad desconocida: " + habilidad.getDescripcion());
+                break;
+        }
+    }
+
 
     // =========================================================================
     // MÉTODOS AUXILIARES
