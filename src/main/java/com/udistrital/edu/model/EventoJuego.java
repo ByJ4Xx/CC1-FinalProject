@@ -68,7 +68,7 @@ public class EventoJuego {
     @Override
     public String toString() {
         return String.format("Evento[%s]: %s - %s (Prioridad: %d)", 
-            id, tipo.getDescripcion(), descripcion, prioridad);
+            id, tipo.getDescripcion(),  descripcion, prioridad);
     }
     
     @Override
