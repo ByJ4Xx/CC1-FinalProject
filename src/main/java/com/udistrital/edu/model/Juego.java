@@ -569,6 +569,26 @@ public class Juego {
         return true;
     }
 
+    public boolean lavarDinero(int monto){
+        if (monto>jugador.getDineroSucio()){
+            System.out.println("No cuenta con suficientes fondos para lavar esa cantidad");
+            return false;
+        }
+        Random rand = new Random();
+        String id = String.format("%s-%03d","tra-", rand.nextInt(1000));
+        Transaccion transaccion = new Transaccion(id,monto);
+
+        jugador.setDineroSucio(jugador.getDineroSucio()-monto);
+
+        if (Math.random() > transaccion.calcularRiesgoTransaccion(transaccion.monto,jugador.getNivelSospecha())) {
+                jugador.setDineroLimpio((int) (jugador.getDineroLimpio() + (transaccion.monto*0.85))); // 15% "comisión"
+                return true;
+            } else {
+                jugador.setNivelSospecha(jugador.getNivelSospecha()+10); // Falla en lavado
+            }
+            return false;
+    }
+
     // =========================================================================
     // MÉTODOS AUXILIARES
     // =========================================================================
